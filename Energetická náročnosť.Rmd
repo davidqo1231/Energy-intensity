@@ -1,0 +1,189 @@
+---
+title: "Energetická náročnosť"
+author: "Dávid Hojdan"
+date: "19 8 2022"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(openxlsx)
+library(readxl)
+library(RJDemetra)
+library(zoo)
+library(data.table)
+library(lubridate)
+library(sjmisc)
+library(stringr)
+
+# Zoznam dostupných krajín
+countries <- c("AUS", "AUT", "BEL", "BGR", "BRA", "CAN", "CYP", "CZE", "DEU", "DNK", "ESP", "EST", "FIN", "FRA", "GBR", "GRC", "HRV", "HUN", "CHE", "CHN", "IDN", "IND", "IRL", "ITA", "JPN", "KOR", "LTU", "LUX", "LVA", "MEX", "MLT", "NOR", "POL", "PRT", "ROU", "RUS", "SVK", "SVN", "SWE", "TUR", "TWN", "USA")
+
+# Načítanie energetických dát (ROW a NLD v jednom je v druhom ne tak som vynechal)
+energy_datasets <- list()
+electricity_data <- list() 
+for(i in countries){
+  path <- paste("U:/IFP_NEW/3_MAKRO/3_1_Analytika/Vplyv_cien_elektriny_na_ekonomiku/Energonarocnost_odvetvi/Environmental_accounts/NAMEA_GEU5610_", i, ".xls", sep = "")
+  energy_datasets[[i]] <- read_excel(path, sheet = "2014")
+  electricity_data[[i]] <- energy_datasets[[i]][["ELECTR_HEATPROD"]]
+}
+
+df_electricity <- as.data.table(electricity_data) %>%
+  bind_cols(as.data.table(energy_datasets[["AUS"]][["...1"]])) %>%
+  rename(industry = V1) %>%
+  relocate(industry) %>%
+  slice(1:56)
+
+industry_names <- df_electricity %>%
+  select(industry) 
+
+# Nacitanie Input-Output tabuliek 
+io_datasets <- list()
+tot_prod <- list()
+for(i in countries){
+  path <- paste("U:/IFP_NEW/3_MAKRO/3_1_Analytika/Vplyv_cien_elektriny_na_ekonomiku/Energonarocnost_odvetvi/NIOT/", i, "_NIOT_nov16.xlsx", sep = "")
+  io_datasets[[i]] <- read.xlsx(path, sheet = "National IO-tables", rows = (c(1, 1683:1738)), cols = c(5:60))
+  tot_prod[[i]] <- read.xlsx(path, sheet = "National IO-tables", rows = (c(1, 1802)), cols = (c(5:60)))
+  tot_prod[[i]] <- transpose(tot_prod[[i]])
+}
+
+df_tot_prod <- as.data.table(tot_prod) %>%
+  bind_cols(industry_names) %>%
+  relocate(industry)
+
+df_tot_prod[df_tot_prod == 0] <- 0.001
+tot_prod_mat <- df_tot_prod %>%
+  select(-industry) %>%
+  as.matrix()
+  
+electricity_mat <- df_electricity %>%
+  select(-industry) %>%
+  as.matrix()
+
+el_intensity <- electricity_mat / tot_prod_mat
+
+# Finalny data frame, priama narocnost na elektrinu po odvetviach a po krajinach
+df_elintensity <- as.data.frame(el_intensity) %>%
+  bind_cols(industry_names) %>%
+  relocate(industry)
+
+```
+
+```{r Priama+nepriama narocnost}
+
+# Vypocty 
+results <- list()
+for(i in countries){
+  Z_mat <- as.matrix(io_datasets[[i]])
+  x_vec <- tot_prod_mat[ , i]
+  diag_x <- diag(x_vec, 56, 56)
+  A_mat <- Z_mat %*% diag(1 / x_vec)
+  ones <- diag(x=1, 56, 56)
+  M_mat <- ones - A_mat
+  L_mat <- solve(M_mat)
+  el_vec <- el_intensity[ , i]
+  intensity_vec <- el_vec %*% L_mat
+  results[[i]] <- t(intensity_vec)
+}
+
+# Dataframe priama+nepriama narocnost odvetvi na elektricku energiu po krajinach
+df_results <- as.data.table(results) %>%
+  bind_cols(industry_names) %>%
+  relocate(industry)
+
+# Export do excelu
+wb <- loadWorkbook("Energeticka_narocnost.xlsx")
+writeData(wb, sheet = "Priama_narocnost", df_elintensity, colNames = T, startCol = 2, startRow = 1)
+saveWorkbook(wb, "Energeticka_narocnost.xlsx", overwrite = T)
+
+writeData(wb, sheet = "Priamanepriama_narocnost", df_results, colNames = T, startCol = 2, startRow = 1)
+saveWorkbook(wb, "Energeticka_narocnost.xlsx", overwrite = T)
+
+```
+
+```{r Vizualizacia}
+#
+EU_countries <- c("AUT", "BEL", "BGR", "CYP", "CZE", "DEU", "DNK", "ESP", "EST", "FIN", "FRA", "GRC", "HRV", "HUN", "IRL", "ITA", "LTU", "LUX", "LVA", "MLT", "POL", "PRT", "ROU", "SVK", "SVN", "SWE") 
+
+fig_industries <- c("vA01", "vB", "vC10_12", "vC13_15", "vC17", "vC18", "vC19", "vC20", "vC21", "vC22", "vC23", "vC24", "vC25", "vC26", "vC27", "vC28", "vC29", "vC30", "vC31_32", "vC33")
+
+industry_names_full <- read.xlsx("U:/IFP_NEW/3_MAKRO/3_1_Analytika/Vplyv_cien_elektriny_na_ekonomiku/Energonarocnost_odvetvi/Energeticka_narocnost.xlsx", sheet = "Priama_narocnost", cols = c(1:2))
+
+# From wide to long (ak chces priame a nepriame, tak df_results, ak len priame tak: df_elintensity)
+df_data <- df_elintensity %>%
+  gather(country, value, -c(industry)) %>%
+  relocate(country) %>%
+  mutate(EU = ifelse(country %in% EU_countries, "EU", "non-EU")) %>%
+  filter(country != "RUS") %>%
+  group_by(industry, EU) %>%
+  mutate(EU_avg = mean(value, na.rm=TRUE),
+         EU_avg = replace(EU_avg, EU != "EU", NA),
+         EU_median = median(value, na.rm = TRUE),
+         EU_median = replace(EU_median, EU != "EU", NA))
+
+df_data_few <- df_data %>%
+  left_join(industry_names_full, by = "industry") %>%
+  filter(industry  %in% fig_industries) %>%
+  mutate(SVK_val = value, 
+         SVK_val = replace(value, country != "SVK", NA),
+         value = replace(value, country == "SVK", NA),
+         DEU_val = value, 
+         DEU_val = replace(value, country != "DEU", NA),
+         value = replace(value, country == "DEU", NA),
+         FRA_val = value, 
+         FRA_val = replace(value, country != "FRA", NA),
+         value = replace(value, country == "FRA", NA),
+         CZE_val = value, 
+         CZE_val = replace(value, country != "CZE", NA),
+         value = replace(value, country == "CZE", NA)) %>%
+  filter(EU == "EU")
+
+
+pal<-c(
+  'grey', #blue
+  '#F2CA6D', #yellow
+  '#E85477', #losos
+  '#0C1D2B', #tmavomodra
+  '#6535F2' #fialova
+)
+
+    
+figure <- ggplot(df_data_few, aes(x = reorder(industry_name, desc(EU_avg)), y = value)) +
+  geom_jitter(aes(color=EU), size=3, alpha = 0.5, width = 0.15) +
+  #geom_point(aes(x=industry_name, y=EU_median), shape = 6, color="#0C1D2B", size=4)+
+  geom_point(aes(x=industry_name, y=SVK_val), color="#0C1D2B", size=4, alpha = 0.8)+
+  geom_point(aes(x=industry_name, y=DEU_val), color="#E85477", size=4, alpha = 0.8)+
+  geom_point(aes(x=industry_name, y=CZE_val), color="#6535F2", size=4, alpha = 0.8)+
+  geom_point(aes(x=industry_name, y=EU_median), shape = 4, color="#0C1D2B", size=6)+
+  
+  scale_y_continuous(limits = c(0, 6)) +
+  scale_fill_manual(values=pal)+
+  scale_color_manual(values=pal)+
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 30))+
+  
+  coord_flip() +
+  
+  xlab("") + 
+  ylab("Náročnosť odvetvia na elektrickú energiu (TJ na produkciu odvetvia v USD)") +
+  
+  theme_minimal()+
+  theme(text=element_text(family = "serif", size = 14, color = "#555555"),
+        legend.position="top",
+        legend.title=element_blank(),
+        panel.grid.major.x = element_line(size = 0.15, colour = "grey"),
+        panel.grid.minor.x = element_line(size = 0.10, colour = "grey"),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank(),
+  )
+    
+ggsave("Fig2_all.svg", width=12, height=12, bg = "white")
+    
+
+
+
+
+
+```
+
+
+
