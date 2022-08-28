@@ -17,7 +17,7 @@ countries <- c("AUS", "AUT", "BEL", "BGR", "BRA", "CAN", "CYP", "CZE", "DEU", "D
 energy_datasets <- list()
 electricity_data <- list() 
 for(i in countries){
-  path <- paste("U:/IFP_NEW/3_MAKRO/3_1_Analytika/Vplyv_cien_elektriny_na_ekonomiku/Energonarocnost_odvetvi/Environmental_accounts/NAMEA_GEU5610_", i, ".xls", sep = "")
+  path <- paste("https://github.com/davidqo1231/Energy-intensity/blob/main/Environmental-accounts/NAMEA_GEU5610_", i, ".xls", sep = "")
   energy_datasets[[i]] <- read_excel(path, sheet = "2014")
   electricity_data[[i]] <- energy_datasets[[i]][["ELECTR_HEATPROD"]]
 }
@@ -30,3 +30,10 @@ df_electricity <- as.data.table(electricity_data) %>%
 
 industry_names <- df_electricity %>%
   select(industry) 
+
+read.xlsx("https://github.com/davidqo1231/Energy-intensity/blob/main/", sheet = "National IO-tables", rows = (c(1, 1683:1738)), cols = c(5:60)
+
+m <- readr::read_csv2("https://raw.githubusercontent.com/davidqo1231/Energy-intensity/main/NIOT/AUS_NIOT_nov16.csv")
+
+
+

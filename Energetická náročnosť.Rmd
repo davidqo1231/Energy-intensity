@@ -23,7 +23,7 @@ countries <- c("AUS", "AUT", "BEL", "BGR", "BRA", "CAN", "CYP", "CZE", "DEU", "D
 energy_datasets <- list()
 electricity_data <- list() 
 for(i in countries){
-  path <- paste("U:/IFP_NEW/3_MAKRO/3_1_Analytika/Vplyv_cien_elektriny_na_ekonomiku/Energonarocnost_odvetvi/Environmental_accounts/NAMEA_GEU5610_", i, ".xls", sep = "")
+  path <- paste("C:/Users/david/Dropbox/Energy_intensity_of_industries/Environmental-accounts/NAMEA_GEU5610_", i, ".xls", sep = "")
   energy_datasets[[i]] <- read_excel(path, sheet = "2014")
   electricity_data[[i]] <- energy_datasets[[i]][["ELECTR_HEATPROD"]]
 }
@@ -184,6 +184,3 @@ ggsave("Fig2_all.svg", width=12, height=12, bg = "white")
 
 
 ```
-
-
-
