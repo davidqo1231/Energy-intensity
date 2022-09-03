@@ -66,11 +66,17 @@ df_elintensity <- as.data.frame(el_intensity) %>%
 
 ## Visualization ##
 
+#set font for later (uses sysfonts and showtext)
+font_add_google("jost", "jost")
+showtext_auto()
+
 # EU countries
 EU_countries <- c("AUT", "BEL", "BGR", "CYP", "CZE", "DEU", "DNK", "ESP", "EST", "FIN", "FRA", "GRC", "HRV", "HUN", "IRL", "ITA", "LTU", "LUX", "LVA", "MLT", "POL", "PRT", "ROU", "SVK", "SVN", "SWE") 
 
 # Select industries for plot
-fig_industries <- c("vA01", "vB", "vC10_12", "vC13_15", "vC17", "vC18", "vC19", "vC20", "vC21", "vC22", "vC23", "vC24", "vC25", "vC26", "vC27", "vC28", "vC29", "vC30", "vC31_32", "vC33")
+#fig_industries <- c("vA01", "vB", "vC10_12", "vC13_15", "vC17", "vC18", "vC19", "vC20", "vC21", "vC22", "vC23", "vC24", "vC25", "vC26", "vC27", "vC28", "vC29", "vC30", "vC31_32", "vC33")
+#Five most energy intensive industries (based on median values)
+fig_industries <- c("vB", "vC23", "vC24", "vC20", "vC17")
 
 # Industries full names
 industry_names_full <- as.data.table(io_datasets[["AUS"]][["Description"]]) %>%
@@ -117,39 +123,57 @@ pal<-c(
   
 
 plot <- ggplot(df_plot, aes(x = reorder(industry_name, desc(EU_avg)), y = value)) +
-  geom_jitter_interactive(aes(color = EU), size =3, alpha = 0.5, width = 0.15) +
-  #geom_jitter(aes(color=EU), size=3, alpha = 0.5, width = 0.15) +
-  #geom_point(aes(x=industry_name, y=EU_median), shape = 6, color="#0C1D2B", size=4)+
-  geom_point(aes(x=industry_name, y=SVK_val), color="#0C1D2B", size=4, alpha = 0.8)+
-  geom_point(aes(x=industry_name, y=DEU_val), color="#E85477", size=4, alpha = 0.8)+
-  geom_point(aes(x=industry_name, y=CZE_val), color="#6535F2", size=4, alpha = 0.8)+
-  geom_point(aes(x=industry_name, y=EU_median), shape = 4, color="#0C1D2B", size=6)+
+  geom_jitter_interactive(aes(color = "EU countries", tooltip = country, data_id = country), size =3, alpha = 0.8, width = 0.15) +
+  geom_point_interactive(aes(x=industry_name, y=SVK_val, color = "Slovakia", tooltip = country, data_id = country), size=4, alpha = 0.8)+
+  geom_point_interactive(aes(x=industry_name, y=DEU_val, color = "Germany", tooltip = country, data_id = country), size=4, alpha = 0.8)+
+  geom_point_interactive(aes(x=industry_name, y=CZE_val, color = "Czechia", tooltip = country, data_id = country),  size=4, alpha = 0.8)+
+  geom_point_interactive(aes(x=industry_name, y=EU_median, tooltip = country, data_id = country), shape = 4, color="#0C1D2B", size=6)+
   
   scale_y_continuous(limits = c(0, 6)) +
-  scale_fill_manual(values=pal)+
-  scale_color_manual(values=pal)+
-  scale_x_discrete(labels = function(x) str_wrap(x, width = 30))+
+  #scale_fill_manual(values=pal)+
+  #scale_color_manual(values=pal)+
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 25))+
   
   coord_flip() +
   
   xlab("") + 
-  ylab("Electricity intensity of industry (TJ to production in USD)") +
+  ylab("TJ of electricity needed to produce 1 mil. USD") +
+  
+  scale_color_manual(breaks=c('EU countries', 'Slovakia', 'Germany', "Czechia"),
+                     values=c('EU countries'='grey', 'Slovakia'='#0C1D2B', 'Germany'='#E85477', "Czechia"= "#6535F2")) +
   
   theme_minimal()+
-  theme(text=element_text(family = "serif", size = 14, color = "#555555"),
+  theme(text=element_text(family = "jost", size = 10, color = "#555555"),
         legend.position="top",
         legend.title=element_blank(),
+        legend.text=element_text(size=10),
+        axis.text.y = element_text(size=10),
+        axis.text.x = element_text(size=10),
+        axis.title.x = element_text(size = 10),
         panel.grid.major.x = element_line(size = 0.15, colour = "grey"),
         panel.grid.minor.x = element_line(size = 0.10, colour = "grey"),
         panel.grid.major.y = element_blank(),
         panel.grid.minor.y = element_blank(),
-  )
+        panel.background = element_rect(fill = "#F9F5EB", color = "#F9F5EB"),
+        plot.background = element_rect(fill = "#F9F5EB", color ="#F9F5EB"),
+        plot.title = element_text(hjust=-0.4, size=20, vjust=0, color="#555555"),
+        plot.subtitle = element_markdown(hjust=1.82, halign = 0, size=10, color="#827f7f", margin=margin(t=5, b=5)),
+        plot.caption = element_text(size=8, hjust=0.95, margin=margin(t=15))
+        
+  ) +
+  
+  labs(caption="Data from World Input-Output Database | Chart @davidqo1231",
+       subtitle="Manufacturing of basic metals needed the most electric energy to make products of 1 mil. USD. Slovakia has the most energy intensive <br>
+       mafucaturing of basic metals mainly due large aluminium production plant that consume 10% of country electricity production. These <br>
+       industries may be significantly affected due to the recent increase in electricity prices in Europe.",
+       title="HARD TIMES FOR METALS", fill="")
 
 interactive<-girafe(ggobj=plot,  
-                    options = list(opts_hover(css = "fill:#AFE1AF;cursor:pointer;")),
-                    width_svg=12, height_svg=12)
+                    options = list(opts_hover(css = "fill:#ffffff;cursor:pointer;")),
+                    width_svg=9, height_svg=5.25)
+
 
 interactive
-
+  
 
 
