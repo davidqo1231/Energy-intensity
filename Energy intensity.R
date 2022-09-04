@@ -137,7 +137,7 @@ plot <- ggplot(df_plot, aes(x = reorder(industry_name, desc(EU_avg)), y = value)
   coord_flip() +
   
   xlab("") + 
-  ylab("TJ of electricity needed to produce 1 mil. USD") +
+  ylab("TJ of electricity needed to produce 1 mil. USD of output") +
   
   scale_color_manual(breaks=c('EU countries', 'Slovakia', 'Germany', "Czechia"),
                      values=c('EU countries'='grey', 'Slovakia'='#0C1D2B', 'Germany'='#E85477', "Czechia"= "#6535F2")) +
@@ -171,9 +171,11 @@ plot <- ggplot(df_plot, aes(x = reorder(industry_name, desc(EU_avg)), y = value)
 interactive<-girafe(ggobj=plot,  
                     options = list(opts_hover(css = "fill:#ffffff;cursor:pointer;")),
                     width_svg=9, height_svg=5.25)
-
-
+#Preview
 interactive
   
+#save plot as HTML file
+saveWidget(interactive, "intensity_plot.html", selfcontained = T)
+
 
 
