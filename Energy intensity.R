@@ -157,16 +157,14 @@ plot <- ggplot(df_plot, aes(x = reorder(industry_name, desc(EU_avg)), y = value)
         panel.background = element_rect(fill = "#F9F5EB", color = "#F9F5EB"),
         plot.background = element_rect(fill = "#F9F5EB", color ="#F9F5EB"),
         plot.title = element_text(hjust=-0.4, size=20, vjust=0, color="#555555"),
-        plot.subtitle = element_markdown(hjust=1.82, halign = 0, size=10, color="#827f7f", margin=margin(t=5, b=5)),
-        plot.caption = element_text(size=8, hjust=0.95, margin=margin(t=15))
-        
-  ) +
+        plot.subtitle = element_markdown(hjust=1.7, halign = 0, size=10, color="#827f7f", margin=margin(t=5, b=5)),
+        plot.caption = element_text(size=8, hjust=0.95, margin=margin(t=15))) +
   
-  labs(caption="Data from World Input-Output Database | Chart @davidqo1231",
-       subtitle="Manufacturing of basic metals needed the most electric energy to make products of 1 mil. USD. Slovakia has the most energy intensive <br>
-       mafucaturing of basic metals mainly due large aluminium production plant that consume 10% of country electricity production. These <br>
-       industries may be significantly affected due to the recent increase in electricity prices in Europe.",
-       title="HARD TIMES FOR METALS", fill="")
+        labs(caption="Data from World Input-Output Database | Chart by David Hojdan",
+             subtitle="Manufacturing of basic metals needed the most electric energy to make products of 1 mil. USD. Slovakia has the most energy intensive <br>
+             manufacturing of basic metals mainly due to large aluminium production plant that consume 10% of the country's electricity production. <br>
+             These industries may be significantly affected due to the recent increase in electricity prices in Europe.",
+             title="HARD TIMES FOR METALS", fill="")
 
 interactive<-girafe(ggobj=plot,  
                     options = list(opts_hover(css = "fill:#ffffff;cursor:pointer;")),
